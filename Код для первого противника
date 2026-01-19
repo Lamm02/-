@@ -1,0 +1,77 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Boss : MonoBehaviour
+{
+
+    [SerializeField] private float HP=4f;
+    [SerializeField] private float damageattack=1f;
+    [SerializeField] private float rangeattack=3f;
+    [SerializeField] private float cooldownattack=2f;
+    [SerializeField] private float stunDuration = 1f;
+
+    private Animator animator;
+    private Rigidbody rb;
+    private bool isAttacking = false;
+    private bool canAttack = true;
+    private AttackType currentAttack;
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (HP<=0 || player==null) return;
+        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+        if (distanceToPlayer <= rangeattack && canAttack && !isAttacking)
+        {
+            chooseattack();
+            Startcoroutine(attackroutine());
+
+        }
+        
+
+    }
+
+    public void chooseattack()
+    {
+        float randomValue = Random.value;
+
+        if (randomValue < 0.4f) 
+        {
+            currentAttack = AttackType.Normal;
+        }
+        else if (randomValue < 0.7f) 
+        {
+            currentAttack = AttackType.Spin;
+        }
+        else 
+        {
+            currentAttack = AttackType.Jump;
+        }
+    }
+    
+    public void TakeDamage(float damage)
+    {
+        HP-=damage;
+        if (HP<=0)
+        {
+            
+            Die();
+        }
+
+    }
+    void Die()
+    {
+        animator.SetTrigger("Die");
+        GetComponent<Collider>().enabled = false;
+        enabled = false;
+        
+        // Отключаем скрипт 
