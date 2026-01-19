@@ -75,3 +75,107 @@ public class Boss : MonoBehaviour
         enabled = false;
         
         // Отключаем скрипт 
+attackCollider.enabled = false;
+        if (spinEffect) spinEffect.Stop();
+    }
+     void CheckForBarrelHitsDuringSpin()
+    {
+        // Проверяем бочек в радиусе вращения
+        Collider[] hitBarrels = Physics.OverlapSphere(transform.position, attackRange, barrelLayer);
+        foreach (Collider barrelCollider in hitBarrels)
+        {
+            if (barrelCollider.CompareTag("Barrel"))
+            {
+                BarrelHit(barrelCollider.gameObject);
+            }
+        }
+    }
+
+    void CheckForBarrelLanding()
+    {
+        // Проверяем бочек в радиусе приземления
+        Collider[] hitBarrels = Physics.OverlapSphere(transform.position, jumpAttackRadius, barrelLayer);
+        foreach (Collider barrelCollider in hitBarrels)
+        {
+            if (barrelCollider.CompareTag("Barrel"))
+            {
+                // При приземлении на бочку - взрыв
+                BarrelHit(barrelCollider.gameObject);
+                
+                // Дополнительный эффект при приземлении
+                if (hitEffect) hitEffect.Play();
+            }
+        }
+    }
+
+    void BarrelHit(GameObject barrel)
+    {
+        // Босс получает урон от бочки
+        TakeDamage(barrelDamage);
+        
+        // Оглушение
+        if (!isStunned)
+        {
+            StartCoroutine(StunRoutine());
+        }
+        
+        // Взрыв бочки
+        BarrelController barrelController = barrel.GetComponent<BarrelController>();
+        if (barrelController != null)
+        {
+            barrelController.Explode();
+        }
+        
+        Debug.Log("Босс попал по бочке и получил урон!");
+    }
+
+    IEnumerator StunRoutine()
+    {
+        isStunned = true;
+        animator.SetBool("Stunned", true);
+        
+        // Останавливаем текущую атаку
+        StopAllCoroutines();
+        isAttacking = false;
+        
+        // Сбрасываем анимацию
+        animator.SetTrigger("Hit");
+        
+        // Визуальный эффект оглушения
+        StartCoroutine(StunEffect());
+        
+        yield return new WaitForSeconds(stunDuration);
+        
+        isStunned = false;
+        animator.SetBool("Stunned", false);
+    }
+
+    IEnumerator StunEffect()
+    {
+        MeshRenderer renderer = GetComponent<MeshRenderer>();
+        if (renderer == null) yield break;
+        
+        float timer = 0f;
+        Material originalMaterial = renderer.material;
+        Color originalColor = renderer.material.color;
+        
+        while (isStunned)
+        {
+            // Мигание при оглушении
+            renderer.material.color = Color.Lerp(originalColor, Color.yellow, Mathf.PingPong(timer * 5f, 1f));
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        
+        renderer.material.color = originalColor;
+    }
+     void OnCollisionEnter(Collision collision)
+    {
+        // Дополнительная проверка столкновений с бочками
+        if (collision.gameObject.CompareTag("Barrel") && isAttacking)
+        {
+            BarrelHit(collision.gameObject);
+        }
+    }
+
+}
