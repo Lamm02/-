@@ -1,0 +1,90 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class NewBehaviourScript : MonoBehaviour
+{
+    [SerializeField] public float moveSpeed = 4f;
+    [SerializeField] public float dashSpeed = 30f;
+    [SerializeField] public float jumpSpeed = 5f;
+    [SerializeField] public float KdDush = 3f;
+    public bool IsGrounded;
+    public float groundDistance = 1f;
+    public LayerMask groundMask = (1 << 0);
+    int countJump = 1;
+    bool canJump = true;
+    bool canDash = true;
+    private Rigidbody rb;
+    Vector3 movement;
+
+    bool jumpRequest = false;
+    bool dashRequest = false;
+
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+    }
+
+    void Update()
+    {
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+        movement = new Vector3(horizontalInput, 0f, verticalInput);
+        if (Input.GetKeyDown(KeyCode.LeftShift)) dashRequest = true;
+        if (Input.GetKeyDown(KeyCode.Space)) jumpRequest = true;
+    }
+
+    void FixedUpdate()
+    {
+        IsGrounded = Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, groundDistance, groundMask);
+        rb.MovePosition(rb.position + movement * moveSpeed * Time.fixedDeltaTime);
+        if (jumpRequest) Jump();
+        if (IsGrounded) countJump = 1;
+
+        if (dashRequest && canDash) Dash(movement);
+
+        jumpRequest = false;
+        dashRequest = false;
+    }
+
+    void Jump()
+    {
+        if (countJump >= 2) return;
+
+        Vector3 vel = rb.velocity;
+        vel.y = 0f;
+        rb.velocity = vel;
+
+        rb.AddForce(Vector3.up * jumpSpeed, ForceMode.Impulse);
+        countJump++;
+    }
+
+    void Dash(Vector3 direction)
+    {
+        if (direction.sqrMagnitude == 0f) return; 
+
+        StartCoroutine(DashRoutine(direction));
+        StartCoroutine(DashCooldown());
+    }
+
+    IEnumerator DashRoutine(Vector3 direction)
+    {
+        canDash = false;
+        rb.useGravity = false;
+
+        Vector3 dashVelocity = direction.normalized * dashSpeed;
+        dashVelocity.y = 0f;
+        rb.velocity = dashVelocity;
+
+        yield return new WaitForSeconds(0.1f); // длительность даша
+
+        rb.velocity = new Vector3(0f, rb.velocity.y, 0f);
+        rb.useGravity = true;
+    }
+
+    IEnumerator DashCooldown()
+    {
+        yield return new WaitForSeconds(KdDush);
+        canDash = true;
+    }
+}
